@@ -1,0 +1,66 @@
+
+import requests
+from bs4 import BeautifulSoup
+import json
+
+'''
+pandas  #是一个包，做数据分析处理,直接读。
+DataFrame  #数据类型
+df=raed_html(html)
+to_SQL
+'''
+
+def get_data(url):  #获取数据
+    headers = {
+        'User-Agent':''#此处省略，添加headers为了伪装成浏览器发送请求
+    }
+
+    response=requests.get(url,headers=headers)
+    if response.status_code==200:
+    #HTTP状态码，表示网络请求成功的意思，返回这个状态表示已经获取到数据了
+        return response.text
+
+
+
+def parse_data(html):   #分析数据
+    soup=BeautifulSoup(html,'lxml')  #用lxml解析库来解析html
+    job_table=soup.find('table',attrs={'class':'tablelist'})
+    #find :去html源码中找到这个符合要求的标签
+    job_trs=job_table.find_all('tr')   #[,<tr>...</tr>,,,]列表
+
+    for item in job_trs[1:-1]:   #[)左闭右开
+        job_tds=item.find_all('td')             #td在tr目录下
+
+        name=job_tds[0].get_text()              #获取其中的文本
+        jobtype = job_tds[1].get_text()
+        headcount = job_tds[2].get_text()
+        location = job_tds[3].get_text()
+        date = job_tds[4].get_text()
+
+        job={
+            '职位':name,
+            '职位类型':jobtype,
+            '人数':headcount,
+            '地点':location,
+            '发布日期':date,
+        }
+        save_data(job)
+
+def save_data(job):
+    job_json=json.dumps(job,ensure_ascii=False)  #是否只转换ascii编码
+    # dump：让Python格式的数据(job)返回json格式的数据.
+    # JSON是一种传递对象的语法，对象可以是name / value对，数组和其他对象
+    with open ('jobs.json','a') as f:
+    #（a--追加）写 到一个文件(jobs.json)中去
+        f.write(job_json+'\n\n')
+
+
+if __name__=='__main__':
+    base_url = "https://hr.tencent.com/position.php?&start="  #网址
+    offset=0
+    while offset<=40 :
+        url=base_url+str(offset)  #强制把offset转换成字符串，得到新的URL
+        html=get_data(url)  #获取
+        parse_data(html)  #页面解析
+        offset+=10
+
